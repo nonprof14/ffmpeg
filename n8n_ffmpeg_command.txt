@@ -1,0 +1,38 @@
+### CORRECTED FFMPEG COMMAND FOR N8N
+### This implements: background layer + foreground overlays + zoom + rounded corners + letterbox
+
+## OPTION 1: Full Featured (Zoom + Rounded Corners + Letterbox)
+-loop 1 -i \\{\\{in_1\\}\\} -loop 1 -t 5 -i \\{\\{in_2\\}\\} -loop 1 -t 5 -i \\{\\{in_3\\}\\} -loop 1 -t 5 -i \\{\\{in_4\\}\\} -i \\{\\{in_audio\\}\\} -filter_complex "[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:-1:-1:black,setsar=1,format=yuv420p[bg];[1:v]scale='if(gt(a,16/9),1400,-1)':'if(gt(a,16/9),-1,787)',zoompan=z='min(1.0+0.05*(on/125),1.05)':d=125:s=1400x787:fps=25,format=yuva420p,split[fg1a][fg1b];[fg1a]geq=lum='lum(X,Y)':a='if(lt(min(min(X,W-X),min(Y,H-Y)),40),if(lte(hypot(40-min(X,W-X),40-min(Y,H-Y)),40),255,0),255)'[fg1];[2:v]scale='if(gt(a,16/9),1400,-1)':'if(gt(a,16/9),-1,787)',zoompan=z='min(1.0+0.05*(on/125),1.05)':d=125:s=1400x787:fps=25,format=yuva420p,split[fg2a][fg2b];[fg2a]geq=lum='lum(X,Y)':a='if(lt(min(min(X,W-X),min(Y,H-Y)),40),if(lte(hypot(40-min(X,W-X),40-min(Y,H-Y)),40),255,0),255)'[fg2];[3:v]scale='if(gt(a,16/9),1400,-1)':'if(gt(a,16/9),-1,787)',zoompan=z='min(1.0+0.05*(on/125),1.05)':d=125:s=1400x787:fps=25,format=yuva420p,split[fg3a][fg3b];[fg3a]geq=lum='lum(X,Y)':a='if(lt(min(min(X,W-X),min(Y,H-Y)),40),if(lte(hypot(40-min(X,W-X),40-min(Y,H-Y)),40),255,0),255)'[fg3];[bg][fg1]overlay=(W-w)/2:(H-h)/2:enable='between(t,0,5)':format=yuv420[v1];[v1][fg2]overlay=(W-w)/2:(H-h)/2:enable='between(t,5,10)':format=yuv420[v2];[v2][fg3]overlay=(W-w)/2:(H-h)/2:enable='between(t,10,15)':format=yuv420[v3];[v3]drawbox=x=0:y=0:w=1920:h=80:color=black:t=fill,drawbox=x=0:y=1000:w=1920:h=80:color=black:t=fill[outv]" -map "[outv]" -map 4:a -c:v libx264 -crf 18 -preset medium -c:a aac -b:a 192k -shortest -t 15 \\{\\{out_1\\}\\}
+
+## OPTION 2: Simplified (Zoom + Letterbox, no rounded corners for performance)
+-loop 1 -i \\{\\{in_1\\}\\} -loop 1 -t 5 -i \\{\\{in_2\\}\\} -loop 1 -t 5 -i \\{\\{in_3\\}\\} -loop 1 -t 5 -i \\{\\{in_4\\}\\} -i \\{\\{in_audio\\}\\} -filter_complex "[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:-1:-1:black,setsar=1,format=yuv420p[bg];[1:v]scale='if(gt(a,16/9),1400,-1)':'if(gt(a,16/9),-1,787)',zoompan=z='min(1.0+0.05*(on/125),1.05)':d=125:s=1400x787:fps=25,setpts=PTS-STARTPTS[fg1];[2:v]scale='if(gt(a,16/9),1400,-1)':'if(gt(a,16/9),-1,787)',zoompan=z='min(1.0+0.05*(on/125),1.05)':d=125:s=1400x787:fps=25,setpts=PTS-STARTPTS[fg2];[3:v]scale='if(gt(a,16/9),1400,-1)':'if(gt(a,16/9),-1,787)',zoompan=z='min(1.0+0.05*(on/125),1.05)':d=125:s=1400x787:fps=25,setpts=PTS-STARTPTS[fg3];[bg][fg1]overlay=(W-w)/2:(H-h)/2:enable='between(t,0,5)'[v1];[v1][fg2]overlay=(W-w)/2:(H-h)/2:enable='between(t,5,10)'[v2];[v2][fg3]overlay=(W-w)/2:(H-h)/2:enable='between(t,10,15)'[v3];[v3]drawbox=x=0:y=0:w=1920:h=80:color=black:t=fill,drawbox=x=0:y=1000:w=1920:h=80:color=black:t=fill[outv]" -map "[outv]" -map 4:a -c:v libx264 -crf 18 -preset medium -c:a aac -b:a 192k -shortest -t 15 \\{\\{out_1\\}\\}
+
+## OPTION 3: Dynamic Duration (reads from n8n variables)
+-loop 1 -i \\{\\{in_1\\}\\} -loop 1 -t \\{\\{dur_2\\}\\} -i \\{\\{in_2\\}\\} -loop 1 -t \\{\\{dur_3\\}\\} -i \\{\\{in_3\\}\\} -loop 1 -t \\{\\{dur_4\\}\\} -i \\{\\{in_4\\}\\} -i \\{\\{in_audio\\}\\} -filter_complex "[0:v]scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:-1:-1:black,setsar=1,format=yuv420p[bg];[1:v]scale='if(gt(a,16/9),1400,-1)':'if(gt(a,16/9),-1,787)',zoompan=z='min(1.0+0.05*(on/125),1.05)':d=125:s=1400x787:fps=25,setpts=PTS-STARTPTS[fg1];[2:v]scale='if(gt(a,16/9),1400,-1)':'if(gt(a,16/9),-1,787)',zoompan=z='min(1.0+0.05*(on/125),1.05)':d=125:s=1400x787:fps=25,setpts=PTS-STARTPTS[fg2];[3:v]scale='if(gt(a,16/9),1400,-1)':'if(gt(a,16/9),-1,787)',zoompan=z='min(1.0+0.05*(on/125),1.05)':d=125:s=1400x787:fps=25,setpts=PTS-STARTPTS[fg3];[bg][fg1]overlay=(W-w)/2:(H-h)/2:enable='between(t,0,\\{\\{dur_2\\}\\})'[v1];[v1][fg2]overlay=(W-w)/2:(H-h)/2:enable='between(t,\\{\\{dur_2\\}\\},\\{\\{dur_2+dur_3\\}\\})'[v2];[v2][fg3]overlay=(W-w)/2:(H-h)/2:enable='between(t,\\{\\{dur_2+dur_3\\}\\},\\{\\{dur_2+dur_3+dur_4\\}\\})'[v3];[v3]drawbox=x=0:y=0:w=1920:h=80:color=black:t=fill,drawbox=x=0:y=1000:w=1920:h=80:color=black:t=fill[outv]" -map "[outv]" -map 4:a -c:v libx264 -crf 18 -preset medium -c:a aac -b:a 192k -shortest \\{\\{out_1\\}\\}
+
+
+### EXPLANATION OF CHANGES:
+
+1. **Background Layer**: [0:v] (in_1) scaled to 1920x1080, used throughout entire video
+2. **Foreground Images**: [1:v], [2:v], [3:v] are scaled to max 1400px width/787px height (fits within letterbox area)
+3. **Zoom Effect**: zoompan filter with gentle 5% zoom over 5 seconds (z='min(1.0+0.05*(on/125),1.05)')
+4. **Rounded Corners**: geq filter creates circular corners (40px radius) - Option 1 only
+5. **Letterbox Bars**: drawbox adds 80px black bars at top (y=0) and bottom (y=1000)
+6. **Overlay Timing**:
+   - fg1 appears from 0-5 seconds
+   - fg2 appears from 5-10 seconds
+   - fg3 appears from 10-15 seconds
+7. **Centered**: overlay=(W-w)/2:(H-h)/2 centers each foreground image
+8. **Aspect Ratio**: scale filter preserves original aspect ratio
+
+### CUSTOMIZATION PARAMETERS:
+
+- **Letterbox height**: Change h=80 to adjust bar size (current: 80px top + 80px bottom = 160px total)
+- **Zoom amount**: Change 0.05 to 0.1 for stronger zoom (min(1.0+0.1*(...),1.1) = 10% zoom)
+- **Zoom speed**: Change d=125 (frames) to control zoom duration at 25fps
+- **Rounded corner radius**: Change 40 in geq formula for larger/smaller corners
+- **Foreground size**: Change 1400x787 to scale foreground images larger/smaller
+- **Duration**: Change -t 5 for each input, and adjust enable times accordingly
+
+### N8N USAGE:
+In your HTTP Request node's "Body Parameters" or "JSON Body", use the command exactly as shown above (the \\{\\{ escaping is correct for n8n).
